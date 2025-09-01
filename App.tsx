@@ -121,7 +121,6 @@ function App() {
     } else {
       setAvailableTasks([]);
     }
-    setUserInput(prev => ({ ...prev, nationalTask: '' }));
   }, [userInput.strategicInitiative]);
 
   useEffect(() => {
@@ -130,7 +129,6 @@ function App() {
     } else {
         setAvailableIndicators([]);
     }
-    setUserInput(prev => ({ ...prev, evaluationIndicator: '', evaluationDetailIndicator: '' }));
   }, [userInput.evaluationCategory]);
 
   useEffect(() => {
@@ -139,7 +137,6 @@ function App() {
     } else {
         setAvailableDetailIndicators([]);
     }
-     setUserInput(prev => ({ ...prev, evaluationDetailIndicator: '' }));
   }, [userInput.evaluationIndicator]);
 
 
@@ -150,7 +147,22 @@ function App() {
 
   const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setUserInput(prev => ({ ...prev, [name]: value }));
+    const key = name as keyof UserInput;
+
+    setUserInput(prev => {
+        const newState = { ...prev, [key]: value };
+
+        if (key === 'strategicInitiative') {
+            newState.nationalTask = '';
+        } else if (key === 'evaluationCategory') {
+            newState.evaluationIndicator = '';
+            newState.evaluationDetailIndicator = '';
+        } else if (key === 'evaluationIndicator') {
+            newState.evaluationDetailIndicator = '';
+        }
+        
+        return newState;
+    });
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -1,66 +1,62 @@
-const CACHE_NAME = 'gyeongpyeong-v1';
-const STATIC_ASSETS = [
+const CACHE_NAME = 'gyeongpyeong-headline-generator-v3';
+const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
+  '/apple-touch-icon.png',
   '/icon-192x192.png',
-  '/icon-512x512.png',
-  '/apple-touch-icon.png'
+  '/icon-512x512.png'
 ];
 
-self.addEventListener('install', event => {
+self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(STATIC_ASSETS);
-    })
+    caches.open(CACHE_NAME)
+      .then((cache) => {
+        console.log('Service Worker: Caching App Shell');
+        return cache.addAll(ASSETS_TO_CACHE);
+      })
+      .catch(error => {
+        console.error('Failed to cache app shell. This might be due to missing icon files.', error);
+      })
   );
 });
 
-self.addEventListener('activate', event => {
-  const cacheWhitelist = [CACHE_NAME];
+self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then(cacheNames => {
+    caches.keys().then((cacheNames) => {
       return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            console.log('Service Worker: Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
-    }).then(() => self.clients.claim())
+    })
   );
+  return self.clients.claim();
 });
 
-self.addEventListener('fetch', event => {
-  const { request } = event;
-
-  if (request.mode === 'navigate') {
+self.addEventListener('fetch', (event) => {
+  // For navigation requests (e.g., loading the page), use a network-first strategy.
+  if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
-        .then(response => {
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(request, responseToCache);
-          });
-          return response;
+      fetch(event.request)
+        .catch(() => {
+          // If the network fails, serve the cached index.html as a fallback.
+          return caches.match('/');
         })
-        .catch(() => caches.match(request))
     );
     return;
   }
 
+  // For other requests (assets like scripts, styles), use a cache-first strategy.
   event.respondWith(
-    caches.match(request).then(cachedResponse => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(request).then(networkResponse => {
-        const responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then(cache => {
-          cache.put(request, responseToCache);
-        });
-        return networkResponse;
-      });
-    })
+    caches.match(event.request)
+      .then((response) => {
+        // If the request is in the cache, return it.
+        // Otherwise, fetch from the network.
+        return response || fetch(event.request);
+      })
   );
 });
