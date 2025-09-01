@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gyeongpyeong-headline-generator-v3';
+const CACHE_NAME = 'gyeongpyeong-headline-generator-v5';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -16,7 +16,7 @@ self.addEventListener('install', (event) => {
         return cache.addAll(ASSETS_TO_CACHE);
       })
       .catch(error => {
-        console.error('Failed to cache app shell. This might be due to missing icon files.', error);
+        console.error('Failed to cache app shell.', error);
       })
   );
 });
