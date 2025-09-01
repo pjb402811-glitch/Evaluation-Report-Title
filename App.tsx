@@ -381,7 +381,7 @@ function App() {
         {renderContent()}
       </main>
       <footer className="text-center py-4 mt-8">
-        <p className="text-xl sm:text-2xl text-gray-500">Made by PJB</p>
+        <p className="text-lg sm:text-xl text-blue-400">경평보고서 쓰시는분들께 도움이 되길 바라며 -Made by 박정범</p>
       </footer>
     </div>
   );
