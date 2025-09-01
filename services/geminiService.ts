@@ -94,6 +94,10 @@ export async function generateHeadlines(userInput: UserInput, attachment: { mime
         },
       },
     });
+    
+    if (!response.text) {
+      throw new Error("API 응답에서 텍스트를 찾을 수 없습니다. 잠시 후 다시 시도해주세요.");
+    }
 
     const jsonString = response.text.trim();
     const result = JSON.parse(jsonString);
