@@ -2,6 +2,7 @@ const CACHE_NAME = 'gyeongpyeong-v1';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
+  '/manifest.webmanifest',
   '/icon-192x192.png',
   '/icon-512x512.png',
   '/apple-touch-icon.png'
