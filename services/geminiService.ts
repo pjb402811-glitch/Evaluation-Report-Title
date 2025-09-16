@@ -4,7 +4,7 @@ import { HEADLINE_TYPES } from '../constants';
 
 export async function generateHeadlines(userInput: UserInput, attachment: { mimeType: string; data: string; name: string; } | null, apiKey: string): Promise<HeadlineResult[]> {
   if (!apiKey) {
-    throw new Error("API 키가 설정되지 않았습니다. 우측 상단 설정에서 API 키를 입력해주세요.");
+    throw new Error("API 키가 설정되지 않았습니다. 설정 아이콘을 클릭하여 API 키를 입력해주세요.");
   }
   
   try {
@@ -109,8 +109,11 @@ export async function generateHeadlines(userInput: UserInput, attachment: { mime
     return result as HeadlineResult[];
   } catch (error) {
     console.error("Error calling Gemini API:", error);
-    if (error instanceof Error && error.message.includes('API key')) {
-        throw new Error("잘못된 API 키입니다. 우측 상단 설정에서 올바른 API 키를 입력해주세요.");
+    if (error instanceof Error) {
+        if (error.message.includes('API key not valid')) {
+          throw new Error('잘못된 API 키입니다. 키를 확인하고 다시 시도해주세요.');
+        }
+        throw new Error(`제목 생성 실패: ${error.message}`);
     }
     throw new Error("제목 생성에 실패했습니다. 입력값을 확인하고 다시 시도해주세요.");
   }

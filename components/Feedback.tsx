@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
-const Feedback: React.FC = () => {
+const Feedback = () => {
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [rating, setRating] = useState<null | 'good' | 'bad'>(null);
 

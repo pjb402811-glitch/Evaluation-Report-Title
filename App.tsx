@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { UserInput, HeadlineResult, AppView } from './types';
 import {
   NATIONAL_OBJECTIVES,
@@ -11,8 +11,8 @@ import {
 import Header from './components/Header';
 import LoadingSpinner from './components/LoadingSpinner';
 import ResultsDisplay from './components/ResultsDisplay';
-import ApiKeyModal from './components/ApiKeyModal';
 import { generateHeadlines } from './services/geminiService';
+import ApiKeyModal from './components/ApiKeyModal';
 
 const initialInput: UserInput = {
   nationalObjective: '',
@@ -27,14 +27,16 @@ const initialInput: UserInput = {
   beneficiaryPerformance: '',
 };
 
-const InputField: React.FC<{
+interface InputFieldProps {
   id: keyof UserInput;
   label: string;
   placeholder: string;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   isTextArea?: boolean;
-}> = ({ id, label, placeholder, value, onChange, isTextArea = false }) => (
+}
+
+const InputField = ({ id, label, placeholder, value, onChange, isTextArea = false }: InputFieldProps) => (
   <div>
     <label htmlFor={id} className="block text-lg font-semibold text-gray-300 mb-1">
       {label}
@@ -63,14 +65,16 @@ const InputField: React.FC<{
   </div>
 );
 
-const SelectField: React.FC<{
+interface SelectFieldProps {
   id: keyof UserInput;
   label: string;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   options: readonly string[];
   disabled?: boolean;
-}> = ({ id, label, value, onChange, options, disabled = false }) => (
+}
+
+const SelectField = ({ id, label, value, onChange, options, disabled = false }: SelectFieldProps) => (
   <div>
     <label htmlFor={id} className="block text-lg font-medium text-gray-400 mb-1">
       {label}
@@ -99,19 +103,20 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
   const [attachment, setAttachment] = useState<{ name: string; mimeType: string; data: string; } | null>(null);
+  
   const [apiKey, setApiKey] = useState<string>('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   
   const [availableTasks, setAvailableTasks] = useState<readonly string[]>([]);
   const [availableIndicators, setAvailableIndicators] = useState<readonly string[]>([]);
   const [availableDetailIndicators, setAvailableDetailIndicators] = useState<readonly string[]>([]);
 
   useEffect(() => {
-    const storedKey = localStorage.getItem('google-ai-api-key');
-    if (storedKey) {
-      setApiKey(storedKey);
+    const storedApiKey = localStorage.getItem('gemini-api-key');
+    if (storedApiKey) {
+      setApiKey(storedApiKey);
     } else {
-      setIsModalOpen(true);
+      setIsSettingsOpen(true);
     }
   }, []);
 
@@ -164,6 +169,11 @@ function App() {
         return newState;
     });
   };
+  
+  const handleSaveApiKey = (newKey: string) => {
+    setApiKey(newKey);
+    localStorage.setItem('gemini-api-key', newKey);
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -193,18 +203,7 @@ function App() {
     setAttachment(null);
   };
   
-  const handleSaveApiKey = (newKey: string) => {
-    setApiKey(newKey);
-    localStorage.setItem('google-ai-api-key', newKey);
-    setIsModalOpen(false);
-  };
-
   const validateInput = (): boolean => {
-    if (!apiKey) {
-      setError('API 키가 설정되지 않았습니다. 우측 상단 열쇠 아이콘을 클릭하여 키를 설정해주세요.');
-      setIsModalOpen(true);
-      return false;
-    }
     const fields: { key: keyof UserInput, name: string }[] = [
       { key: 'nationalObjective', name: '국정목표' },
       { key: 'strategicInitiative', name: '추진전략' },
@@ -232,6 +231,11 @@ function App() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!apiKey) {
+      setError("API 키가 설정되지 않았습니다. 우측 상단의 설정 아이콘을 클릭하여 API 키를 입력해주세요.");
+      setIsSettingsOpen(true);
+      return;
+    }
     if (!validateInput()) {
       return;
     }
@@ -383,18 +387,19 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-900">
-      <Header onOpenSettings={() => setIsModalOpen(true)} />
-      <ApiKeyModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSave={handleSaveApiKey}
-      />
+      <Header onOpenSettings={() => setIsSettingsOpen(true)} />
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {renderContent()}
       </main>
       <footer className="text-center py-4 mt-8">
         <p className="text-lg sm:text-xl text-blue-400">경평보고서 쓰시는분들께 도움이 되길 바라며 -Made by 박정범</p>
       </footer>
+      <ApiKeyModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        onSave={handleSaveApiKey}
+        currentApiKey={apiKey}
+      />
     </div>
   );
 }

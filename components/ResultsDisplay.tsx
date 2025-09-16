@@ -1,4 +1,3 @@
-import React from 'react';
 import type { HeadlineResult } from '../types';
 import CopyButton from './CopyButton';
 
@@ -10,7 +9,7 @@ interface ResultsDisplayProps {
   error: string | null;
 }
 
-const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, onReset, onRegenerate, isRegenerating, error }) => {
+const ResultsDisplay = ({ results, onReset, onRegenerate, isRegenerating, error }: ResultsDisplayProps) => {
   const totalHeadlines = results.reduce((acc, curr) => acc + curr.headlines.length, 0);
 
   const handleSaveAsTxt = () => {
