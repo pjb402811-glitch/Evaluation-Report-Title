@@ -1,4 +1,3 @@
-// FIX: Imported ChangeEvent and FormEvent from 'react' to fix TypeScript errors.
 import { useState, useCallback, useEffect, ChangeEvent, FormEvent } from 'react';
 import type { UserInput, HeadlineResult, AppView } from './types';
 import {
@@ -13,7 +12,7 @@ import Header from './components/Header';
 import LoadingSpinner from './components/LoadingSpinner';
 import ResultsDisplay from './components/ResultsDisplay';
 import { generateHeadlines } from './services/geminiService';
-// FIX: Removed ApiKeyModal as it's no longer needed.
+import ApiKeyModal from './components/ApiKeyModal';
 
 const initialInput: UserInput = {
   nationalObjective: '',
@@ -33,7 +32,6 @@ interface InputFieldProps {
   label: string;
   placeholder: string;
   value: string;
-  // FIX: Used ChangeEvent type for the event to fix a TypeScript error.
   onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   isTextArea?: boolean;
 }
@@ -71,7 +69,6 @@ interface SelectFieldProps {
   id: keyof UserInput;
   label: string;
   value: string;
-  // FIX: Used ChangeEvent type for the event to fix a TypeScript error.
   onChange: (e: ChangeEvent<HTMLSelectElement>) => void;
   options: readonly string[];
   disabled?: boolean;
@@ -105,19 +102,17 @@ function App() {
   const [view, setView] = useState<AppView>('intro');
   const [error, setError] = useState<string | null>(null);
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
-  const [attachment, setAttachment] = useState<{ name: string; mimeType: string; data: string; } | null>(null);
-  
-  // FIX: Removed apiKey and isSettingsOpen states as API key is now handled by environment variables.
+  const [attachments, setAttachments] = useState<{ name: string; mimeType: string; data: string; }[]>([]);
+  const [apiKey, setApiKey] = useState<string>('');
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   
   const [availableTasks, setAvailableTasks] = useState<readonly string[]>([]);
   const [availableIndicators, setAvailableIndicators] = useState<readonly string[]>([]);
   const [availableDetailIndicators, setAvailableDetailIndicators] = useState<readonly string[]>([]);
 
   useEffect(() => {
-    // Register the service worker once the App component has mounted.
     if ('serviceWorker' in navigator) {
       const registerServiceWorker = () => {
-        // Use an absolute URL to prevent cross-origin errors in certain hosting environments.
         const swUrl = `${location.origin}/sw.js`;
         navigator.serviceWorker.register(swUrl)
           .then(registration => {
@@ -127,19 +122,23 @@ function App() {
             console.error('ServiceWorker registration failed: ', err);
           });
       };
-      // The 'load' event ensures that the page is fully loaded before registration.
       window.addEventListener('load', registerServiceWorker);
 
-      // Cleanup the event listener when the component unmounts.
       return () => {
         window.removeEventListener('load', registerServiceWorker);
       };
     }
-  }, []); // The empty dependency array ensures this effect runs only once.
+  }, []);
 
+  useEffect(() => {
+    const storedApiKey = localStorage.getItem('googleApiKey');
+    if (storedApiKey) {
+      setApiKey(storedApiKey);
+    } else {
+      setIsModalOpen(true);
+    }
+  }, []);
 
-  // FIX: Removed useEffect for loading API key from localStorage.
-  
   useEffect(() => {
     if (userInput.strategicInitiative && NATIONAL_TASKS_BY_INITIATIVE[userInput.strategicInitiative]) {
       setAvailableTasks(NATIONAL_TASKS_BY_INITIATIVE[userInput.strategicInitiative]);
@@ -165,13 +164,11 @@ function App() {
   }, [userInput.evaluationIndicator]);
 
 
-  // FIX: Used ChangeEvent type for the event to fix a TypeScript error.
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setUserInput(prev => ({ ...prev, [name]: value }));
   };
 
-  // FIX: Used ChangeEvent type for the event to fix a TypeScript error.
   const handleSelectChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const { name, value } = e.target;
     const key = name as keyof UserInput;
@@ -191,36 +188,51 @@ function App() {
         return newState;
     });
   };
-  
-  // FIX: Removed handleSaveApiKey function.
 
-  // FIX: Used ChangeEvent type for the event to fix a TypeScript error.
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = event.target?.result as string;
-        const [header, base64Data] = result.split(',');
-        const mimeType = header.match(/:(.*?);/)?.[1] || 'application/octet-stream';
-
-        setAttachment({
-          name: file.name,
-          mimeType: mimeType,
-          data: base64Data,
+    const files = e.target.files;
+    if (files) {
+      const filePromises = Array.from(files).map(file => {
+        return new Promise<{ name: string; mimeType: string; data: string; }>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const result = event.target?.result as string;
+            if (!result) {
+                reject(new Error('파일을 읽는 데 실패했습니다.'));
+                return;
+            }
+            const [header, base64Data] = result.split(',');
+            const mimeType = header.match(/:(.*?);/)?.[1] || 'application/octet-stream';
+            resolve({
+              name: file.name,
+              mimeType: mimeType,
+              data: base64Data,
+            });
+          };
+          reader.onerror = () => {
+            reject(new Error('파일을 읽는 중 오류가 발생했습니다.'));
+          };
+          reader.readAsDataURL(file);
         });
-      };
-      reader.onerror = () => {
-        setError('파일을 읽는 중 오류가 발생했습니다.');
-        setAttachment(null);
-      };
-      reader.readAsDataURL(file);
+      });
+
+      Promise.all(filePromises)
+        .then(newAttachments => {
+          setAttachments(prev => [...prev, ...newAttachments]);
+        })
+        .catch(error => {
+          if (error instanceof Error) {
+            setError(error.message);
+          } else {
+            setError('파일을 처리하는 중 알 수 없는 오류가 발생했습니다.');
+          }
+        });
     }
     e.target.value = '';
   };
 
-  const handleClearFile = () => {
-    setAttachment(null);
+  const handleRemoveAttachment = (indexToRemove: number) => {
+    setAttachments(prev => prev.filter((_, index) => index !== indexToRemove));
   };
   
   const validateInput = (): boolean => {
@@ -249,18 +261,20 @@ function App() {
     return true;
   };
 
-  // FIX: Used FormEvent type for the event to fix a TypeScript error.
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    // FIX: Removed API key check from the client-side validation.
+    if (!apiKey) {
+      setError('Google AI API Key가 설정되지 않았습니다. 설정에서 Key를 입력해주세요.');
+      setIsModalOpen(true);
+      return;
+    }
     if (!validateInput()) {
       return;
     }
     setView('loading');
     setError(null);
     try {
-      // FIX: The apiKey is no longer passed to generateHeadlines.
-      const generatedResults = await generateHeadlines(userInput, attachment);
+      const generatedResults = await generateHeadlines(apiKey, userInput, attachments);
       setResults(generatedResults);
       setView('results');
     } catch (err) {
@@ -272,9 +286,14 @@ function App() {
   const handleRegenerate = async () => {
     setIsRegenerating(true);
     setError(null);
+     if (!apiKey) {
+      setError('Google AI API Key가 설정되지 않았습니다. 설정에서 Key를 입력해주세요.');
+      setIsModalOpen(true);
+      setIsRegenerating(false);
+      return;
+    }
     try {
-      // FIX: The apiKey is no longer passed to generateHeadlines.
-      const newResults = await generateHeadlines(userInput, attachment);
+      const newResults = await generateHeadlines(apiKey, userInput, attachments);
       setResults(prevResults => {
         const mergedResults = JSON.parse(JSON.stringify(prevResults));
         newResults.forEach(newResultGroup => {
@@ -300,9 +319,14 @@ function App() {
     setUserInput(initialInput);
     setResults([]);
     setError(null);
-    setAttachment(null);
+    setAttachments([]);
     setView('intro');
   }, []);
+
+  const handleSaveKey = (key: string) => {
+    setApiKey(key);
+    localStorage.setItem('googleApiKey', key);
+  };
 
   const renderContent = () => {
     switch (view) {
@@ -370,17 +394,24 @@ function App() {
                   <label className="block text-lg font-semibold text-gray-300 mb-3">
                     6. 첨부파일 (선택사항)
                   </label>
-                  <div className="flex items-center space-x-4">
-                    <label htmlFor="file-upload" className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-200 bg-gray-600 hover:bg-gray-500">
-                      <span>파일 선택</span>
-                      <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleFileChange} accept=".pdf,.txt,.md,.json,.csv,.doc,.docx,.ppt,.pptx" />
-                    </label>
-                    {attachment && (
-                      <div className="flex items-center space-x-2 text-sm text-gray-300 bg-gray-800 px-3 py-1 rounded-full">
-                        <span>{attachment.name}</span>
-                        <button type="button" onClick={handleClearFile} className="text-red-400 hover:text-red-300 font-bold" aria-label="Remove file">
-                          &times;
-                        </button>
+                  <div>
+                    <div className="flex items-center space-x-4">
+                      <label htmlFor="file-upload" className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-200 bg-gray-600 hover:bg-gray-500">
+                        <span>파일 선택</span>
+                        <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleFileChange} multiple accept=".pdf,.txt,.md,.json,.csv,.doc,.docx,.ppt,.pptx" />
+                      </label>
+                      {attachments.length > 0 && <span className="text-sm text-gray-400">{attachments.length}개 파일 선택됨</span>}
+                    </div>
+                     {attachments.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                          {attachments.map((file, index) => (
+                              <div key={index} className="flex items-center justify-between text-sm text-gray-300 bg-gray-800 px-3 py-1.5 rounded-full border border-gray-600">
+                                  <span className="truncate pr-2" title={file.name}>{file.name}</span>
+                                  <button type="button" onClick={() => handleRemoveAttachment(index)} className="text-red-400 hover:text-red-300 font-bold ml-2 flex-shrink-0 leading-none" aria-label={`Remove ${file.name}`}>
+                                      &times;
+                                  </button>
+                              </div>
+                          ))}
                       </div>
                     )}
                   </div>
@@ -407,12 +438,16 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-900">
-      {/* FIX: Removed onOpenSettings prop from Header component. */}
-      <Header />
+      <Header onOpenSettings={() => setIsModalOpen(true)} />
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {renderContent()}
       </main>
-      {/* FIX: Removed footer as its content has been moved. */}
+      <ApiKeyModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleSaveKey}
+        currentApiKey={apiKey}
+      />
     </div>
   );
 }

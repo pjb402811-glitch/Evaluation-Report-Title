@@ -2,16 +2,13 @@ import { GoogleGenAI, Type } from "@google/genai";
 import type { UserInput, HeadlineResult } from '../types';
 import { HEADLINE_TYPES } from '../constants';
 
-// FIX: Removed apiKey parameter. The API key should be securely managed via environment variables as per the guidelines.
-export async function generateHeadlines(userInput: UserInput, attachment: { mimeType: string; data: string; name: string; } | null): Promise<HeadlineResult[]> {
-  // FIX: API key is now sourced from process.env.API_KEY. The check for a missing key from user input is no longer necessary.
-  if (!process.env.API_KEY) {
-    throw new Error("API 키가 설정되지 않았습니다. 환경 변수를 확인해주세요.");
+export async function generateHeadlines(apiKey: string, userInput: UserInput, attachments: { mimeType: string; data: string; name: string; }[]): Promise<HeadlineResult[]> {
+  if (!apiKey) {
+    throw new Error('Google AI API Key가 설정되지 않았습니다. 설정에서 Key를 입력해주세요.');
   }
   
   try {
-    // FIX: Initialize GoogleGenAI with the API key from environment variables.
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
 
     const textPrompt = `
     You are a 'Headline Strategist', an expert AI assistant for public institution report writers in South Korea. Your goal is to generate fresh, persuasive, and clear headlines for management evaluation committee reports.
@@ -27,7 +24,7 @@ export async function generateHeadlines(userInput: UserInput, attachment: { mime
     5. Organizational Performance (기관의 성과)
     6. Beneficiary Performance (수혜자 체감성과)
     
-    If a reference file is attached, please use the information within it to generate more accurate and relevant headlines reflecting the latest data and policies.
+    If reference files are attached, please use the information within them to generate more accurate and relevant headlines reflecting the latest data and policies.
 
     Based on this input, your task is to generate exactly 45 headlines. These headlines must be categorized into 15 specific types, with 3 unique headlines for each type. The 15 types are: ${HEADLINE_TYPES.join(', ')}.
 
@@ -51,12 +48,14 @@ export async function generateHeadlines(userInput: UserInput, attachment: { mime
     `;
     
     const parts: any[] = [{ text: textPrompt }];
-    if (attachment) {
-      parts.push({
-        inlineData: {
-          mimeType: attachment.mimeType,
-          data: attachment.data,
-        },
+    if (attachments && attachments.length > 0) {
+      attachments.forEach(attachment => {
+        parts.push({
+          inlineData: {
+            mimeType: attachment.mimeType,
+            data: attachment.data,
+          },
+        });
       });
     }
 
@@ -114,7 +113,7 @@ export async function generateHeadlines(userInput: UserInput, attachment: { mime
     console.error("Error calling Gemini API:", error);
     if (error instanceof Error) {
         if (error.message.includes('API key not valid')) {
-          throw new Error('잘못된 API 키입니다. 키를 확인하고 다시 시도해주세요.');
+          throw new Error('Google AI API Key가 잘못되었거나 설정되지 않았습니다. 설정을 확인해주세요.');
         }
         throw new Error(`제목 생성 실패: ${error.message}`);
     }
