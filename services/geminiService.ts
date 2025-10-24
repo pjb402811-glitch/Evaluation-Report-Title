@@ -2,13 +2,16 @@ import { GoogleGenAI, Type } from "@google/genai";
 import type { UserInput, HeadlineResult } from '../types';
 import { HEADLINE_TYPES } from '../constants';
 
-export async function generateHeadlines(userInput: UserInput, attachment: { mimeType: string; data: string; name: string; } | null, apiKey: string): Promise<HeadlineResult[]> {
-  if (!apiKey) {
-    throw new Error("API 키가 설정되지 않았습니다. 설정 아이콘을 클릭하여 API 키를 입력해주세요.");
+// FIX: Removed apiKey parameter. The API key should be securely managed via environment variables as per the guidelines.
+export async function generateHeadlines(userInput: UserInput, attachment: { mimeType: string; data: string; name: string; } | null): Promise<HeadlineResult[]> {
+  // FIX: API key is now sourced from process.env.API_KEY. The check for a missing key from user input is no longer necessary.
+  if (!process.env.API_KEY) {
+    throw new Error("API 키가 설정되지 않았습니다. 환경 변수를 확인해주세요.");
   }
   
   try {
-    const ai = new GoogleGenAI({ apiKey });
+    // FIX: Initialize GoogleGenAI with the API key from environment variables.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     const textPrompt = `
     You are a 'Headline Strategist', an expert AI assistant for public institution report writers in South Korea. Your goal is to generate fresh, persuasive, and clear headlines for management evaluation committee reports.

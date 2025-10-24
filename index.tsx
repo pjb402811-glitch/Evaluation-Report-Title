@@ -14,18 +14,4 @@ root.render(
   <App />
 );
 
-// Register the service worker after the page has fully loaded.
-// This is the most robust approach to avoid race conditions and "invalid state" errors.
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    // Use an absolute URL to prevent cross-origin errors in certain hosting environments.
-    const swUrl = `${location.origin}/sw.js`;
-    navigator.serviceWorker.register(swUrl)
-      .then(registration => {
-        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-      })
-      .catch(err => {
-        console.error('ServiceWorker registration failed: ', err);
-      });
-  });
-}
+// Service worker registration logic has been moved to App.tsx to align with the component lifecycle.

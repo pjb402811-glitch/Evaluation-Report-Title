@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, FormEvent } from 'react';
 
 const Feedback = () => {
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [rating, setRating] = useState<null | 'good' | 'bad'>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // FIX: Changed React.FormEvent to FormEvent and imported it from 'react' to fix a TypeScript error.
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     setFeedbackSent(true);
     // In a real app, you would send this feedback to a server.

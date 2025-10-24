@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
+// FIX: Imported ChangeEvent and FormEvent from 'react' to fix TypeScript errors.
+import { useState, useCallback, useEffect, ChangeEvent, FormEvent } from 'react';
 import type { UserInput, HeadlineResult, AppView } from './types';
 import {
   NATIONAL_OBJECTIVES,
@@ -12,7 +13,7 @@ import Header from './components/Header';
 import LoadingSpinner from './components/LoadingSpinner';
 import ResultsDisplay from './components/ResultsDisplay';
 import { generateHeadlines } from './services/geminiService';
-import ApiKeyModal from './components/ApiKeyModal';
+// FIX: Removed ApiKeyModal as it's no longer needed.
 
 const initialInput: UserInput = {
   nationalObjective: '',
@@ -32,7 +33,8 @@ interface InputFieldProps {
   label: string;
   placeholder: string;
   value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  // FIX: Used ChangeEvent type for the event to fix a TypeScript error.
+  onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   isTextArea?: boolean;
 }
 
@@ -69,7 +71,8 @@ interface SelectFieldProps {
   id: keyof UserInput;
   label: string;
   value: string;
-  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  // FIX: Used ChangeEvent type for the event to fix a TypeScript error.
+  onChange: (e: ChangeEvent<HTMLSelectElement>) => void;
   options: readonly string[];
   disabled?: boolean;
 }
@@ -104,22 +107,39 @@ function App() {
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
   const [attachment, setAttachment] = useState<{ name: string; mimeType: string; data: string; } | null>(null);
   
-  const [apiKey, setApiKey] = useState<string>('');
-  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  // FIX: Removed apiKey and isSettingsOpen states as API key is now handled by environment variables.
   
   const [availableTasks, setAvailableTasks] = useState<readonly string[]>([]);
   const [availableIndicators, setAvailableIndicators] = useState<readonly string[]>([]);
   const [availableDetailIndicators, setAvailableDetailIndicators] = useState<readonly string[]>([]);
 
   useEffect(() => {
-    const storedApiKey = localStorage.getItem('gemini-api-key');
-    if (storedApiKey) {
-      setApiKey(storedApiKey);
-    } else {
-      setIsSettingsOpen(true);
-    }
-  }, []);
+    // Register the service worker once the App component has mounted.
+    if ('serviceWorker' in navigator) {
+      const registerServiceWorker = () => {
+        // Use an absolute URL to prevent cross-origin errors in certain hosting environments.
+        const swUrl = `${location.origin}/sw.js`;
+        navigator.serviceWorker.register(swUrl)
+          .then(registration => {
+            console.log('ServiceWorker registration successful with scope: ', registration.scope);
+          })
+          .catch(err => {
+            console.error('ServiceWorker registration failed: ', err);
+          });
+      };
+      // The 'load' event ensures that the page is fully loaded before registration.
+      window.addEventListener('load', registerServiceWorker);
 
+      // Cleanup the event listener when the component unmounts.
+      return () => {
+        window.removeEventListener('load', registerServiceWorker);
+      };
+    }
+  }, []); // The empty dependency array ensures this effect runs only once.
+
+
+  // FIX: Removed useEffect for loading API key from localStorage.
+  
   useEffect(() => {
     if (userInput.strategicInitiative && NATIONAL_TASKS_BY_INITIATIVE[userInput.strategicInitiative]) {
       setAvailableTasks(NATIONAL_TASKS_BY_INITIATIVE[userInput.strategicInitiative]);
@@ -145,12 +165,14 @@ function App() {
   }, [userInput.evaluationIndicator]);
 
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  // FIX: Used ChangeEvent type for the event to fix a TypeScript error.
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setUserInput(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  // FIX: Used ChangeEvent type for the event to fix a TypeScript error.
+  const handleSelectChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const { name, value } = e.target;
     const key = name as keyof UserInput;
 
@@ -170,12 +192,10 @@ function App() {
     });
   };
   
-  const handleSaveApiKey = (newKey: string) => {
-    setApiKey(newKey);
-    localStorage.setItem('gemini-api-key', newKey);
-  };
+  // FIX: Removed handleSaveApiKey function.
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // FIX: Used ChangeEvent type for the event to fix a TypeScript error.
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -229,20 +249,18 @@ function App() {
     return true;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // FIX: Used FormEvent type for the event to fix a TypeScript error.
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!apiKey) {
-      setError("API 키가 설정되지 않았습니다. 우측 상단의 설정 아이콘을 클릭하여 API 키를 입력해주세요.");
-      setIsSettingsOpen(true);
-      return;
-    }
+    // FIX: Removed API key check from the client-side validation.
     if (!validateInput()) {
       return;
     }
     setView('loading');
     setError(null);
     try {
-      const generatedResults = await generateHeadlines(userInput, attachment, apiKey);
+      // FIX: The apiKey is no longer passed to generateHeadlines.
+      const generatedResults = await generateHeadlines(userInput, attachment);
       setResults(generatedResults);
       setView('results');
     } catch (err) {
@@ -255,7 +273,8 @@ function App() {
     setIsRegenerating(true);
     setError(null);
     try {
-      const newResults = await generateHeadlines(userInput, attachment, apiKey);
+      // FIX: The apiKey is no longer passed to generateHeadlines.
+      const newResults = await generateHeadlines(userInput, attachment);
       setResults(prevResults => {
         const mergedResults = JSON.parse(JSON.stringify(prevResults));
         newResults.forEach(newResultGroup => {
@@ -310,6 +329,7 @@ function App() {
           <>
             <div className="text-center mb-10">
               <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">보고서 아이템 제목생성을 위해 아래에 정보를 입력해주세요.</h2>
+              <p className="mt-2 text-lg text-lime-400">경평 보고서 쓰시는 분들께 도움이 되길 바라며 -Made by 박정범</p>
             </div>
             <div className="bg-gray-800 p-8 rounded-lg shadow-lg border border-gray-700">
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -387,19 +407,12 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-900">
-      <Header onOpenSettings={() => setIsSettingsOpen(true)} />
+      {/* FIX: Removed onOpenSettings prop from Header component. */}
+      <Header />
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {renderContent()}
       </main>
-      <footer className="text-center py-4 mt-8">
-        <p className="text-lg sm:text-xl text-blue-400">경평보고서 쓰시는분들께 도움이 되길 바라며 -Made by 박정범</p>
-      </footer>
-      <ApiKeyModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        onSave={handleSaveApiKey}
-        currentApiKey={apiKey}
-      />
+      {/* FIX: Removed footer as its content has been moved. */}
     </div>
   );
 }

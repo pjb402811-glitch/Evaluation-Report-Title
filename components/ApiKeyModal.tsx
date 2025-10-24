@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+// FIX: Imported KeyboardEvent from 'react' to fix a TypeScript error.
+import { useState, useEffect, KeyboardEvent } from 'react';
 
 interface ApiKeyModalProps {
   isOpen: boolean;
@@ -23,7 +24,8 @@ const ApiKeyModal = ({ isOpen, onClose, onSave, currentApiKey }: ApiKeyModalProp
     onClose();
   };
   
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+  // FIX: Used KeyboardEvent type for the event to fix a TypeScript error.
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Escape') {
       onClose();
     }
